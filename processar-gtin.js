@@ -4,7 +4,7 @@ const path = require('path');
 const ARQUIVOS_DIR = path.join(__dirname, 'arquivos');
 const OUTPUT_FILE = path.join(__dirname, 'produtos_com_gtin.csv');
 
-// Helper to parse a CSV line handling quotes
+// Função auxiliar para analisar uma linha CSV lidando com aspas
 function parseCSVLine(text) {
     const result = [];
     let cell = '';
@@ -16,15 +16,15 @@ function parseCSVLine(text) {
 
         if (char === '"') {
             if (insideQuote && nextChar === '"') {
-                // Escaped quote
+                // Aspas escapadas
                 cell += '"';
-                i++; // Skip next quote
+                i++; // Pular a próxima aspa
             } else {
-                // Toggle quote state
+                // Alternar estado das aspas
                 insideQuote = !insideQuote;
             }
         } else if (char === ',' && !insideQuote) {
-            // End of cell
+            // Fim da célula
             result.push(cell);
             cell = '';
         } else {
@@ -35,21 +35,21 @@ function parseCSVLine(text) {
     return result;
 }
 
-// Helper to safely read file lines handling different line endings
+// Função auxiliar para ler linhas de arquivo com segurança, lidando com diferentes quebras de linha
 function readFileLines(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
-    // Normalize line endings and split
-    // We need to be careful about newlines inside quotes.
-    // A simple split by \n might break if there are newlines in descriptions.
-    // For this specific task, let's assume standard CSV where records are on new lines.
-    // If we encounter issues, we might need a more complex parser.
-    // Given the previous file view, descriptions seemed to have HTML which might contain newlines?
-    // Let's check the file content again mentally... yes, there were HTML tags.
-    // The previous view showed lines starting with line numbers, which suggests the file view tool handled newlines.
-    // However, a robust CSV parser should handle newlines in quotes.
-    
-    // Let's implement a character-by-character parser for the whole file to be safe.
-    return content; 
+    // Normalizar quebras de linha e dividir
+    // Precisamos ter cuidado com quebras de linha dentro de aspas.
+    // Uma simples divisão por \n pode quebrar se houver quebras de linha nas descrições.
+    // Para esta tarefa específica, vamos assumir CSV padrão onde os registros estão em novas linhas.
+    // Se encontrarmos problemas, podemos precisar de um analisador mais complexo.
+    // Dado a visualização anterior do arquivo, as descrições pareciam ter HTML que pode conter quebras de linha.
+    // Vamos verificar o conteúdo do arquivo novamente mentalmente... sim, havia tags HTML.
+    // A visualização anterior mostrou linhas começando com números de linha, o que sugere que a ferramenta de visualização lidou com as quebras de linha.
+    // No entanto, um analisador CSV robusto deve lidar com quebras de linha entre aspas.
+
+    // Vamos implementar um analisador caractere por caractere para o arquivo inteiro para ser seguro.
+    return content;
 }
 
 function parseCSV(content) {
@@ -57,7 +57,7 @@ function parseCSV(content) {
     let currentRow = [];
     let currentCell = '';
     let insideQuote = false;
-    
+
     for (let i = 0; i < content.length; i++) {
         const char = content[i];
         const nextChar = content[i + 1];
@@ -73,13 +73,13 @@ function parseCSV(content) {
             currentRow.push(currentCell);
             currentCell = '';
         } else if ((char === '\r' || char === '\n') && !insideQuote) {
-            // Handle line breaks
+            // Lidar com quebras de linha
             if (char === '\r' && nextChar === '\n') {
                 i++;
             }
             currentRow.push(currentCell);
             if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0] !== '')) {
-                 rows.push(currentRow);
+                rows.push(currentRow);
             }
             currentRow = [];
             currentCell = '';
@@ -87,18 +87,18 @@ function parseCSV(content) {
             currentCell += char;
         }
     }
-    // Push last row if exists
+    // Adicionar última linha se existir
     if (currentCell || currentRow.length > 0) {
         currentRow.push(currentCell);
         rows.push(currentRow);
     }
-    
+
     return rows;
 }
 
 function main() {
     console.log('Iniciando processamento...');
-    
+
     if (!fs.existsSync(ARQUIVOS_DIR)) {
         console.error(`Diretório não encontrado: ${ARQUIVOS_DIR}`);
         return;
@@ -113,14 +113,14 @@ function main() {
     files.forEach(file => {
         const filePath = path.join(ARQUIVOS_DIR, file);
         console.log(`Lendo arquivo: ${file}`);
-        
+
         try {
             const content = fs.readFileSync(filePath, 'utf8');
             const rows = parseCSV(content);
 
             if (rows.length === 0) return;
 
-            // Find headers
+            // Encontrar cabeçalhos
             const header = rows[0];
             const idxSku = header.indexOf('Código (SKU)');
             const idxDesc = header.indexOf('Descrição');
@@ -131,15 +131,15 @@ function main() {
                 return;
             }
 
-            // Process rows
+            // Processar linhas
             let countInFile = 0;
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
-                // Ensure row has enough columns
+                // Garantir que a linha tenha colunas suficientes
                 if (row.length <= Math.max(idxSku, idxDesc, idxGtin)) continue;
 
                 const gtin = row[idxGtin].trim();
-                
+
                 if (gtin) {
                     allProducts.push({
                         sku: row[idxSku],
@@ -158,16 +158,16 @@ function main() {
 
     console.log(`\nTotal de produtos encontrados: ${allProducts.length}`);
 
-    // Generate Output CSV
-    // Header
+    // Gerar CSV de saída
+    // Cabeçalho
     let csvContent = '"Código (SKU)","Descrição","GTIN/EAN"\n';
-    
+
     allProducts.forEach(p => {
-        // Escape quotes in content if necessary (though we just read them, let's be safe)
+        // Escapar aspas no conteúdo se necessário (embora acabamos de lê-las, vamos ser seguros)
         const sku = p.sku.replace(/"/g, '""');
         const desc = p.descricao.replace(/"/g, '""');
         const gtin = p.gtin.replace(/"/g, '""');
-        
+
         csvContent += `"${sku}","${desc}","${gtin}"\n`;
     });
 
